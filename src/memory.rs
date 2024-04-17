@@ -12,6 +12,10 @@ extern "C" {
 
 pub fn virt_to_phys<T: ?Sized>(v: &T) -> usize {
     let addr = v as *const T as *const () as usize;
+    virt_to_phys_addr(addr)
+}
+
+pub fn virt_to_phys_addr(addr: usize) -> usize {
     let virtual_code_start = unsafe { &KERNEL_CODE_VIRTUAL as *const _ as usize };
     let virtual_stack_start = unsafe { &KERNEL_STACK_VIRTUAL as *const _ as usize };
 
@@ -23,5 +27,20 @@ pub fn virt_to_phys<T: ?Sized>(v: &T) -> usize {
         PHYSICAL_STACK_START + offset
     } else {
         panic!("Unhandled virtual address: 0x{addr:x}")
+    }
+}
+
+pub fn phys_to_virt_addr(addr: usize) -> usize {
+    let virtual_code_start = unsafe { &KERNEL_CODE_VIRTUAL as *const _ as usize };
+    let virtual_stack_start = unsafe { &KERNEL_STACK_VIRTUAL as *const _ as usize };
+
+    if addr >= RAM_START {
+        let offset = addr - RAM_START;
+        virtual_code_start + offset
+    } else if addr >= PHYSICAL_STACK_START {
+        let offset = addr - PHYSICAL_STACK_START;
+        virtual_stack_start + offset
+    } else {
+        panic!("Unhandled physical address: 0x{addr:x}")
     }
 }

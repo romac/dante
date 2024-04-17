@@ -106,4 +106,3 @@ impl fmt::Display for SbiError {
         msg.fmt(f)
     }
 }
-
