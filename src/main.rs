@@ -79,9 +79,7 @@ pub unsafe extern "C" fn kmain(hart_id: usize, phys_dtb: usize) -> ! {
 
     debug_dtb(virt_dtb);
 
-    loop {
-        wfi();
-    }
+    sbi::sbi_shutdown();
 }
 
 fn debug_dtb(virt_dtb: usize) {
