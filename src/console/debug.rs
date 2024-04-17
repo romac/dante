@@ -1,6 +1,7 @@
 use core::arch::asm;
 use core::fmt::{self, Write};
 
+use crate::memory::virt_to_phys;
 use crate::sbi::{sbi_ret, SbiResult};
 
 #[macro_export]
@@ -47,7 +48,8 @@ pub struct DebugConsole;
 impl fmt::Write for DebugConsole {
     fn write_str(&mut self, mut s: &str) -> fmt::Result {
         while !s.is_empty() {
-            match sbi_debug_console_write(s.as_bytes()) {
+            let addr = virt_to_phys(s);
+            match sbi_debug_console_write(addr as u64, s.len()) {
                 Ok(n) => s = &s[n..],
                 Err(_) => return Err(fmt::Error),
             }
@@ -59,7 +61,7 @@ impl fmt::Write for DebugConsole {
 
 const DBCN_EID: u64 = 0x4442434E;
 
-pub fn sbi_debug_console_write(data: &[u8]) -> SbiResult<usize> {
+pub fn sbi_debug_console_write(start: u64, len: usize) -> SbiResult<usize> {
     let written_len;
     let status;
 
@@ -68,8 +70,8 @@ pub fn sbi_debug_console_write(data: &[u8]) -> SbiResult<usize> {
             "ecall",
             in("a7") DBCN_EID,
             in("a6") 0,
-            in("a0") data.len(), // length of the buffer to print
-            in("a1") data.as_ptr(), // 64 lower bytes of the address
+            in("a0") len, // length of the buffer to print
+            in("a1") start, // 64 lower bytes of the address
             in("a2") 0, // 64 upper bytes of the address
             lateout("a0") status,
             lateout("a1") written_len,

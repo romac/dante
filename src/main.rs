@@ -1,11 +1,13 @@
 #![no_std]
 #![no_main]
+#![allow(clippy::missing_safety_doc)]
 
 mod console;
+mod memory;
 mod sbi;
 
+use core::arch::global_asm;
 use core::panic::PanicInfo;
-use riscv_rt::entry;
 
 pub const BANNER: &str = r#"
       ___           ___           ___           ___           ___     
@@ -22,6 +24,7 @@ pub const BANNER: &str = r#"
 "#;
 
 // Wait for interrupt, allows the CPU to go into a power saving mode
+#[inline]
 pub fn wfi() {
     unsafe { core::arch::asm!("wfi") }
 }
@@ -33,13 +36,15 @@ fn panic(info: &PanicInfo) -> ! {
     sbi::sbi_panic();
 }
 
-#[entry]
-fn main(a0: usize, a1: usize) -> ! {
-    debug_println!("\n{BANNER}\n");
+global_asm!(include_str!("boot/boot.s"));
+
+#[export_name = "_kmain"]
+pub unsafe extern "C" fn kmain(hart_id: usize, phys_dtb: usize) -> ! {
+    debug_println!("{BANNER}");
 
     debug_println!("Kernel arguments:");
-    debug_println!("  hart: {a0}");
-    debug_println!("  dtb:  0x{a1:x}");
+    debug_println!("  hart: {hart_id}");
+    debug_println!("  dtb (physical): 0x{phys_dtb:x}");
 
     loop {
         wfi();

@@ -9,4 +9,3 @@ test = false
 bench = false
 
 [dependencies]
-riscv-rt = { version = "0.12", features = ["single-hart", "s-mode"] }
