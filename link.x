@@ -87,7 +87,7 @@ SECTIONS
     }
 
     /* Define the .bss section for uninitialized data, aligning it to 8 bytes and marking it as NOLOAD. */
-    .bss ALIGN(8) (NOLOAD) : AT(ADDR(.data) - _KERNEL_VA_CODE_OFFSET) {
+    .bss ALIGN(8) (NOLOAD) : AT(ADDR(.bss) - _KERNEL_VA_CODE_OFFSET) {
         _sbss = .; /* Mark the start of the .bss section. */
         *(.sbss .sbss.* .bss .bss.*); /* Include specific BSS sections. */
         . = ALIGN(8); /* Align the end of the .bss section to 8 bytes. */

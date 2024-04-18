@@ -1,4 +1,4 @@
-use core::fmt;
+use core::{fmt, ops};
 
 // TODO: load these from symbols
 const RAM_START: usize = 0x80000000;
@@ -12,11 +12,11 @@ extern "C" {
     static KERNEL_STACK_VIRTUAL: u8;
 }
 
-#[derive(Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct VirtAddr(usize);
 
 impl VirtAddr {
-    pub fn new(addr: usize) -> Self {
+    pub const fn new(addr: usize) -> Self {
         VirtAddr(addr)
     }
 
@@ -24,12 +24,34 @@ impl VirtAddr {
         PhysAddr::new(virt_to_phys_addr(self.0))
     }
 
-    pub fn as_ptr<T>(self) -> *const T {
+    pub const fn as_ptr<T>(self) -> *const T {
         self.0 as *const T
     }
 
-    pub fn as_mut_ptr<T>(self) -> *mut T {
+    pub const fn as_mut_ptr<T>(self) -> *mut T {
         self.0 as *mut T
+    }
+}
+
+impl ops::Add<usize> for VirtAddr {
+    type Output = VirtAddr;
+
+    fn add(self, rhs: usize) -> VirtAddr {
+        VirtAddr(self.0 + rhs)
+    }
+}
+
+impl ops::Sub<usize> for VirtAddr {
+    type Output = VirtAddr;
+
+    fn sub(self, rhs: usize) -> VirtAddr {
+        VirtAddr(self.0 - rhs)
+    }
+}
+
+impl fmt::Debug for VirtAddr {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "VirtAddr(0x{:016x})", self.0)
     }
 }
 
@@ -39,16 +61,62 @@ impl fmt::Display for VirtAddr {
     }
 }
 
-#[derive(Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
+impl ops::Sub<VirtAddr> for VirtAddr {
+    type Output = usize;
+
+    fn sub(self, rhs: VirtAddr) -> usize {
+        self.0 - rhs.0
+    }
+}
+
+#[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct PhysAddr(usize);
 
 impl PhysAddr {
-    pub fn new(addr: usize) -> Self {
+    pub const fn new(addr: usize) -> Self {
         PhysAddr(addr)
     }
 
     pub fn to_virt(self) -> VirtAddr {
         VirtAddr::new(phys_to_virt_addr(self.0))
+    }
+
+    pub const fn as_ptr(&self) -> *const u8 {
+        self.0 as *const u8
+    }
+
+    pub const fn as_mut_ptr(&self) -> *mut u8 {
+        self.0 as *mut u8
+    }
+}
+
+impl ops::Add<usize> for PhysAddr {
+    type Output = PhysAddr;
+
+    fn add(self, rhs: usize) -> PhysAddr {
+        PhysAddr(self.0 + rhs)
+    }
+}
+
+impl ops::Sub<usize> for PhysAddr {
+    type Output = PhysAddr;
+
+    fn sub(self, rhs: usize) -> PhysAddr {
+        PhysAddr(self.0 - rhs)
+    }
+}
+
+impl ops::Sub<PhysAddr> for PhysAddr {
+    type Output = usize;
+
+    fn sub(self, rhs: PhysAddr) -> usize {
+        self.0 - rhs.0
+    }
+}
+
+impl fmt::Debug for PhysAddr {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "PhysAddr(0x{:016x})", self.0)
     }
 }
 
