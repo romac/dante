@@ -1,3 +1,5 @@
+use core::fmt;
+
 // TODO: load these from symbols
 const RAM_START: usize = 0x80000000;
 const PHYSICAL_STACK_START: usize = 0x80000000 + 0x2000000 + 16 * 1024 * 1024;
@@ -8,6 +10,52 @@ extern "C" {
 
     #[link_name = "_VIRTUAL_STACK"]
     static KERNEL_STACK_VIRTUAL: u8;
+}
+
+#[derive(Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub struct VirtAddr(usize);
+
+impl VirtAddr {
+    pub fn new(addr: usize) -> Self {
+        VirtAddr(addr)
+    }
+
+    pub fn to_phys(self) -> PhysAddr {
+        PhysAddr::new(virt_to_phys_addr(self.0))
+    }
+
+    pub fn as_ptr<T>(self) -> *const T {
+        self.0 as *const T
+    }
+
+    pub fn as_mut_ptr<T>(self) -> *mut T {
+        self.0 as *mut T
+    }
+}
+
+impl fmt::Display for VirtAddr {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "0x{:016x}", self.0)
+    }
+}
+
+#[derive(Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub struct PhysAddr(usize);
+
+impl PhysAddr {
+    pub fn new(addr: usize) -> Self {
+        PhysAddr(addr)
+    }
+
+    pub fn to_virt(self) -> VirtAddr {
+        VirtAddr::new(phys_to_virt_addr(self.0))
+    }
+}
+
+impl fmt::Display for PhysAddr {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "0x{:016x}", self.0)
+    }
 }
 
 pub fn virt_to_phys<T: ?Sized>(v: &T) -> usize {

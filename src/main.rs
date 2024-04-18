@@ -9,7 +9,7 @@ mod sbi;
 use core::arch::global_asm;
 use core::panic::PanicInfo;
 
-use crate::memory::phys_to_virt_addr;
+use memory::{PhysAddr, VirtAddr};
 
 pub const BANNER: &str = r#"
       ___           ___           ___           ___           ___     
@@ -67,23 +67,27 @@ pub unsafe extern "C" fn kmain(hart_id: usize, phys_dtb: usize) -> ! {
     //     )
     // };
 
+    boot(hart_id, PhysAddr::new(phys_dtb))
+}
+
+fn boot(hart_id: usize, phys_dtb: PhysAddr) -> ! {
     debug_println!("{BANNER}");
 
-    let virt_dtb = phys_to_virt_addr(phys_dtb);
+    let virt_dtb = phys_dtb.to_virt();
 
     debug_println!("Kernel arguments:");
-    debug_println!("  HART:       {hart_id}");
+    debug_println!("  HART: {hart_id}");
     debug_println!("  DeviceTree:");
-    debug_println!("    Physical: 0x{phys_dtb:x}");
-    debug_println!("    Virtual:  0x{virt_dtb:x}");
+    debug_println!("    Physical: {phys_dtb}");
+    debug_println!("    Virtual:  {virt_dtb}");
 
     debug_dtb(virt_dtb);
 
-    sbi::sbi_shutdown();
+    sbi::sbi_shutdown()
 }
 
-fn debug_dtb(virt_dtb: usize) {
-    let fdt = unsafe { fdt::Fdt::from_ptr(virt_dtb as *const u8).unwrap() };
+fn debug_dtb(virt_dtb: VirtAddr) {
+    let fdt = unsafe { fdt::Fdt::from_ptr(virt_dtb.as_ptr()).unwrap() };
     // dbg!(&fdt);
 
     debug_println!("\nDeviceTree:");
@@ -95,7 +99,7 @@ fn debug_dtb(virt_dtb: usize) {
     let memory = fdt.memory().regions().next().unwrap();
 
     debug_println!(
-        "  Memory:              {:#X} - {:#X} ({} bytes)",
+        "  Memory:              {:#x} - {:#X} ({} bytes)",
         memory.starting_address as usize,
         memory.starting_address as usize + memory.size.unwrap(),
         memory.size.unwrap()
@@ -110,7 +114,7 @@ fn debug_dtb(virt_dtb: usize) {
         for (i, region) in reserved_memory.children().enumerate() {
             let reg = region.reg().unwrap().next().unwrap();
             debug_println!(
-                "  Reserved memory #{i}:  {:#X} - {:#X} ({} bytes)",
+                "  Reserved memory #{i}:  {:#x} - {:#x} ({} bytes)",
                 reg.starting_address as usize,
                 reg.starting_address as usize + reg.size.unwrap(),
                 reg.size.unwrap()

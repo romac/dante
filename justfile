@@ -1,4 +1,4 @@
-default: run
+default: kernel run
 
 kernel_path := "./target/riscv64gc-unknown-none-elf/debug/dante"
 
