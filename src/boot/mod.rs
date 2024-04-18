@@ -1,7 +1,7 @@
 use core::fmt;
 use fdt::Fdt;
 
-use crate::memory::PhysAddr;
+use crate::memory::{PhysAddr, RAM_PHYS_START};
 
 static mut BOOT_INFO: Option<BootInfo> = None;
 
@@ -29,23 +29,28 @@ impl BootInfo {
     }
 
     pub fn memory_region(&self) -> Region {
-        let memory_region = Region::from(self.fdt.memory().regions().next().unwrap());
-        let reserved_memory = self.fdt.find_node("/reserved-memory");
-        let last_reserved_memory_region = reserved_memory
-            .map(|node| node.children().flat_map(|node| node.reg().unwrap()))
-            .map(|regions| regions.map(Region::from))
-            .and_then(|regions| regions.max_by_key(|reg| reg.end()));
+        let memory = Region::from(self.fdt.memory().regions().next().unwrap());
+        let start = PhysAddr::new(RAM_PHYS_START);
+        let size = memory.start.as_usize() - (RAM_PHYS_START - memory.start.as_usize());
 
-        if let Some(last_reserved_memory_region) = last_reserved_memory_region {
-            let reserved_size = last_reserved_memory_region.end() - memory_region.start;
+        Region { start, size }
 
-            Region::new(
-                last_reserved_memory_region.end(),
-                memory_region.size - reserved_size,
-            )
-        } else {
-            memory_region
-        }
+        // let reserved_memory = self.fdt.find_node("/reserved-memory");
+        // let last_reserved_memory_region = reserved_memory
+        //     .map(|node| node.children().flat_map(|node| node.reg().unwrap()))
+        //     .map(|regions| regions.map(Region::from))
+        //     .and_then(|regions| regions.max_by_key(|reg| reg.end()));
+        //
+        // if let Some(last_reserved_memory_region) = last_reserved_memory_region {
+        //     let reserved_size = last_reserved_memory_region.end() - memory_region.start;
+        //
+        //     Region::new(
+        //         last_reserved_memory_region.end(),
+        //         memory_region.size - reserved_size,
+        //     )
+        // } else {
+        //     memory_region
+        // }
     }
 }
 

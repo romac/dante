@@ -11,3 +11,4 @@ bench = false
 [dependencies]
 fdt = { version = "0.1.5", features = ["pretty-printing"] }
 linked_list_allocator = "0.10.5"
+spinning_top = "0.3.0"
