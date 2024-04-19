@@ -12,7 +12,7 @@ pub fn init_heap(boot_info: &'static BootInfo) {
     unsafe {
         ALLOCATOR
             .lock()
-            .init(memory.start.as_mut_ptr(), memory.size);
+            .init(memory.start.to_virt().as_mut_ptr(), memory.size);
     }
 }
 

@@ -181,5 +181,5 @@ pub fn init_root_pt() {
         )
         .unwrap();
 
-    unsafe { asm!("csrw satp, {0}", in(reg) 9 << 60 | root_pt.0.ppn()) }
+    unsafe { asm!("csrw satp, {0}", in(reg) 9 << 60 | root_pt.ppn()) }
 }

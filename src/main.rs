@@ -68,7 +68,7 @@ fn kernel_main(boot_info: &'static BootInfo) -> ! {
 
     let memory_region = boot_info.memory_region();
 
-    debug_println!("  Memory region:");
+    debug_println!("  Available memory:");
     debug_println!("    Start: {}", memory_region.start);
     debug_println!("    End:   {}", memory_region.end());
     debug_println!("    Size:  {} bytes", memory_region.size);
