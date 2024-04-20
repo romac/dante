@@ -32,8 +32,12 @@ impl BootInfo {
         let memory = Region::from(self.fdt.memory().regions().next().unwrap());
         let start = PhysAddr::new(RAM_PHYS_START);
         let size = memory.start.as_usize() - (RAM_PHYS_START - memory.start.as_usize());
+        let max_size = usize::MAX - start.to_virt().as_usize();
 
-        Region { start, size }
+        Region {
+            start,
+            size: core::cmp::min(size, max_size),
+        }
 
         // let reserved_memory = self.fdt.find_node("/reserved-memory");
         // let last_reserved_memory_region = reserved_memory

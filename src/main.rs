@@ -65,23 +65,26 @@ fn kernel_main(boot_info: &'static BootInfo) -> ! {
     debug_println!("  DeviceTree:");
     debug_println!("    Physical: {}", boot_info.dtb_addr);
     debug_println!("    Virtual:  {}", boot_info.dtb_addr.to_virt());
+    debug_println!("");
 
-    let memory_region = boot_info.memory_region();
+    page_table::init();
+
+    let memory = boot_info.memory_region();
 
     debug_println!("  Available memory:");
-    debug_println!("    Start: {}", memory_region.start);
-    debug_println!("    End:   {}", memory_region.end());
-    debug_println!("    Size:  {} bytes", memory_region.size);
+    debug_println!("    Start: {} ({})", memory.start, memory.start.to_virt());
+    debug_println!("    End:   {} ({})", memory.end(), memory.end().to_virt());
+    debug_println!("    Size:  {} bytes", memory.size);
+    debug_println!("");
 
-    // dtb::debug_dtb(&boot_info.fdt);
+    dtb::debug_dtb(&boot_info.fdt);
 
-    page_table::init_root_pt();
-    debug_println!("\nPage table initialized");
+    debug_println!("Page table initialized");
 
-    allocator::init_heap(boot_info);
+    allocator::init_kernel_heap(boot_info);
     debug_println!("Heap initialized");
 
-    // allocator::test_allocations();
+    allocator::test_allocations();
 
     sbi::sbi_shutdown()
 }

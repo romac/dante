@@ -1,5 +1,7 @@
+use alloc::fmt;
+use core::arch::asm;
 use core::ops;
-use core::{arch::asm, ops::Index};
+use core::ops::Index;
 
 use spinning_top::Spinlock as SpinLock;
 
@@ -26,6 +28,10 @@ macro_rules! declare_flags {
              #[allow(unused)]
              pub const $flag: u8 = 1 << $value;
          )*
+
+         const FLAGS: [(u8, &'static str); 8] = [
+            $(($value, stringify!($flag)),)*
+         ];
      };
  }
 
@@ -42,20 +48,69 @@ declare_flags! {
     }
 }
 
+struct Flags(u8);
+
+impl fmt::Debug for Flags {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let mut flags = f.debug_set();
+
+        for (flag, name) in FLAGS {
+            if self.0 & (1 << flag) != 0 {
+                flags.entry(&name);
+            }
+        }
+
+        flags.finish()
+    }
+}
+
 const STATIC_ALLOC: u64 = 1 << 9;
 
 #[repr(transparent)]
 pub struct PageTableEntry(u64);
 
 impl PageTableEntry {
+    pub fn new(ppn: u64, flags: u8) -> Self {
+        Self::with_data(ppn, false, flags)
+    }
+
     pub fn with_data(ppn: u64, data: bool, flags: u8) -> Self {
         Self(ppn << 10 | (data as u64 & 0b1) << 8 | (flags | PTE_VALID) as u64)
     }
 
-    pub fn new(ppn: u64, flags: u8) -> Self {
-        Self::with_data(ppn, false, flags)
+    pub fn ppn(&self) -> u64 {
+        self.0 >> 10
+    }
+
+    pub fn data(&self) -> bool {
+        self.0 >> 8 & 0b1 == 1
+    }
+
+    pub fn flags(&self) -> u8 {
+        (self.0 & 0b111) as u8
     }
 }
+
+struct Ppn(u64);
+
+impl fmt::Debug for Ppn {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{:#018x}", self.0)
+    }
+}
+
+impl fmt::Debug for PageTableEntry {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("PageTableEntry")
+            .field("ppn", &Ppn(self.ppn()))
+            .field("data", &self.data())
+            .field("flags", &Flags(self.flags()))
+            .finish()
+    }
+}
+
+#[repr(align(4096))]
+pub struct PageTable([PageTableEntry; 512]);
 
 impl PageTable {
     fn ppn(&self) -> u64 {
@@ -63,7 +118,7 @@ impl PageTable {
     }
 
     fn set(&mut self, idx: u16, value: PageTableEntry) -> Result<(), PtError> {
-        if self[idx].0 & PTE_VALID as u64 != 0 {
+        if self[idx].flags() & PTE_VALID != 0 {
             return Err(if self[idx].0 >> 1 & 0b111 == 0 {
                 PtError::AlreadMappedIntermediate
             } else {
@@ -85,9 +140,21 @@ impl Index<u16> for PageTable {
     }
 }
 
-#[repr(align(4096))]
-pub struct PageTable([PageTableEntry; 512]);
+impl fmt::Debug for PageTable {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let mut pt = f.debug_list();
 
+        for entry in &self.0 {
+            if entry.flags() & PTE_VALID != 0 {
+                pt.entry(&entry);
+            }
+        }
+
+        pt.finish()
+    }
+}
+
+#[derive(Debug)]
 pub struct RootPageTable(PageTable);
 
 impl ops::Deref for RootPageTable {
@@ -105,6 +172,7 @@ impl ops::DerefMut for RootPageTable {
 }
 
 const EMPTY_PTE: PageTableEntry = PageTableEntry(0);
+
 const EMPTY_STATIC_PT: PageTable = {
     let mut pt = PageTable([EMPTY_PTE; 512]);
     pt.0[0].0 |= STATIC_ALLOC;
@@ -118,6 +186,7 @@ fn vpn(addr: u64, idx: u8) -> u16 {
 /// Level 2 page table
 /// SAFETY: must be modified with the lock for KERNEL_PAGE_TABLE
 static mut HIGH_PT: PageTable = EMPTY_STATIC_PT;
+
 /// Level 1 page table
 /// SAFETY: must be modified with the lock for KERNEL_PAGE_TABLE
 static mut STACK_PT: PageTable = EMPTY_STATIC_PT;
@@ -126,7 +195,7 @@ static mut STACK_PT: PageTable = EMPTY_STATIC_PT;
 pub static KERNEL_PAGE_TABLE: SpinLock<RootPageTable> =
     SpinLock::new(RootPageTable(EMPTY_STATIC_PT));
 
-pub fn init_root_pt() {
+pub fn init() {
     let mut root_pt = KERNEL_PAGE_TABLE.lock();
     let high_pt = unsafe { &mut *core::ptr::addr_of_mut!(HIGH_PT) };
     let stack_pt = unsafe { &mut *core::ptr::addr_of_mut!(STACK_PT) };
@@ -180,6 +249,8 @@ pub fn init_root_pt() {
             ),
         )
         .unwrap();
+
+    // crate::dbg!(&root_pt, &high_pt, &stack_pt);
 
     unsafe { asm!("csrw satp, {0}", in(reg) 9 << 60 | root_pt.ppn()) }
 }

@@ -6,7 +6,7 @@ use crate::prelude::*;
 #[global_allocator]
 static ALLOCATOR: LockedHeap = LockedHeap::empty();
 
-pub fn init_heap(boot_info: &'static BootInfo) {
+pub fn init_kernel_heap(boot_info: &'static BootInfo) {
     let memory = boot_info.memory_region();
 
     unsafe {

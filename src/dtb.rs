@@ -47,10 +47,12 @@ pub fn debug_dtb(fdt: &Fdt<'_>) {
     }
 
     let soc = fdt.find_node("/soc");
+
     debug_println!(
         "  Has SoC?             {}",
         if soc.is_some() { "yes" } else { "no" }
     );
+
     if let Some(soc) = soc {
         debug_print!("  SoC Children:");
 
@@ -62,4 +64,6 @@ pub fn debug_dtb(fdt: &Fdt<'_>) {
             }
         }
     }
+
+    debug_println!("");
 }
